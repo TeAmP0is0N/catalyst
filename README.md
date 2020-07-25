@@ -19,6 +19,14 @@
 ![catalyst-cv](https://github.com/catalyst-team/catalyst/workflows/catalyst-cv/badge.svg?branch=master&event=push)
 ![catalyst-nlp](https://github.com/catalyst-team/catalyst/workflows/catalyst-nlp/badge.svg?branch=master&event=push)
 [![Build Status](http://66.248.205.49:8111/app/rest/builds/buildType:id:Catalyst_Deploy/statusIcon.svg)](http://66.248.205.49:8111/project.html?projectId=Catalyst&tab=projectOverview&guest=1)
+
+[![python](https://img.shields.io/badge/python_3.6-passing-success)](https://github.com/catalyst-team/catalyst/workflows/catalyst/badge.svg?branch=master&event=push)
+[![python](https://img.shields.io/badge/python_3.7-passing-success)](https://github.com/catalyst-team/catalyst/workflows/catalyst/badge.svg?branch=master&event=push)
+[![python](https://img.shields.io/badge/python_3.8-passing-success)](https://github.com/catalyst-team/catalyst/workflows/catalyst/badge.svg?branch=master&event=push)
+
+[![os](https://img.shields.io/badge/Linux-passing-success)](https://github.com/catalyst-team/catalyst/workflows/catalyst/badge.svg?branch=master&event=push)
+[![os](https://img.shields.io/badge/OSX-passing-success)](https://github.com/catalyst-team/catalyst/workflows/catalyst/badge.svg?branch=master&event=push)
+[![os](https://img.shields.io/badge/WSL-passing-success)](https://github.com/catalyst-team/catalyst/workflows/catalyst/badge.svg?branch=master&event=push)
 </div>
 
 PyTorch framework for Deep Learning research and development.
@@ -49,7 +57,8 @@ import torch
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from catalyst import dl
-from catalyst.contrib.data.dataset import MNIST, ToTensor
+from catalyst.contrib.data.transforms import ToTensor
+from catalyst.contrib.datasets import MNIST
 from catalyst.utils import metrics
 
 model = torch.nn.Linear(28 * 28, 10)
@@ -73,14 +82,14 @@ class CustomRunner(dl.Runner):
 
         loss = F.cross_entropy(y_hat, y)
         accuracy01, accuracy03 = metrics.accuracy(y_hat, y, topk=(1, 3))
-        self.state.batch_metrics.update(
+        self.batch_metrics.update(
             {"loss": loss, "accuracy01": accuracy01, "accuracy03": accuracy03}
         )
 
-        if self.state.is_train_loader:
+        if self.is_train_loader:
             loss.backward()
-            self.state.optimizer.step()
-            self.state.optimizer.zero_grad()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
 runner = CustomRunner()
 # model training
@@ -115,6 +124,7 @@ traced_model = runner.trace(loader=loaders["valid"])
   * [Tests](#tests)
 - [Catalyst](#catalyst)
   * [Tutorials](#tutorials)
+  * [Docs](#docs)
   * [Guides](#guides)
   * [Projects](#projects)
   * [Tools and pipelines](#tools-and-pipelines)
@@ -147,25 +157,23 @@ pip install -U catalyst
 <p>
 
 ```bash
-pip install catalyst[ml]         # installs DL+ML based catalyst
-pip install catalyst[cv]         # installs DL+CV based catalyst
-pip install catalyst[nlp]        # installs DL+NLP based catalyst
+pip install catalyst[cv]         # installs CV-based catalyst
+pip install catalyst[nlp]        # installs NLP-based catalyst
 pip install catalyst[ecosystem]  # installs Catalyst.Ecosystem
-pip install catalyst[contrib]    # installs DL+contrib based catalyst
-pip install catalyst[all]        # installs everything
 # and master version installation
 pip install git+https://github.com/catalyst-team/catalyst@master --upgrade
 ```
 </p>
 </details>
 
-Catalyst is compatible with: Python 3.6+. PyTorch 1.0.0+.
+Catalyst is compatible with: Python 3.6+. PyTorch 1.1+. <br/>
+Tested on Ubuntu 16.04/18.04/20.04, macOS 10.15, Windows 10 and Windows Subsystem for Linux.
 
 
 ### Minimal Examples
 
 <details>
-<summary>ML - Linear Regression is my profession</summary>
+<summary>ML - linear regression</summary>
 <p>
 
 ```python
@@ -202,8 +210,93 @@ runner.train(
 </p>
 </details>
 
+
 <details>
-<summary>CV - MNIST classification one more time</summary>
+<summary>ML - multi-class classification</summary>
+<p>
+
+```python
+import torch
+from torch.utils.data import DataLoader, TensorDataset
+from catalyst import dl
+
+# sample data
+num_samples, num_features, num_classes = int(1e4), int(1e1), 4
+X = torch.rand(num_samples, num_features)
+y = (torch.rand(num_samples, ) * num_classes).to(torch.int64)
+
+# pytorch loaders
+dataset = TensorDataset(X, y)
+loader = DataLoader(dataset, batch_size=32, num_workers=1)
+loaders = {"train": loader, "valid": loader}
+
+# model, criterion, optimizer, scheduler
+model = torch.nn.Linear(num_features, num_classes)
+criterion = torch.nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters())
+scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [2])
+
+# model training
+runner = dl.SupervisedRunner()
+runner.train(
+    model=model,
+    criterion=criterion,
+    optimizer=optimizer,
+    scheduler=scheduler,
+    loaders=loaders,
+    logdir="./logdir",
+    num_epochs=3,
+    callbacks=[dl.AccuracyCallback(num_classes=num_classes)]
+)
+```
+</p>
+</details>
+
+
+<details>
+<summary>ML - multi-label classification</summary>
+<p>
+
+```python
+import torch
+from torch.utils.data import DataLoader, TensorDataset
+from catalyst import dl
+
+# sample data
+num_samples, num_features, num_classes = int(1e4), int(1e1), 4
+X = torch.rand(num_samples, num_features)
+y = (torch.rand(num_samples, num_classes) > 0.5).to(torch.float32)
+
+# pytorch loaders
+dataset = TensorDataset(X, y)
+loader = DataLoader(dataset, batch_size=32, num_workers=1)
+loaders = {"train": loader, "valid": loader}
+
+# model, criterion, optimizer, scheduler
+model = torch.nn.Linear(num_features, num_classes)
+criterion = torch.nn.BCEWithLogitsLoss()
+optimizer = torch.optim.Adam(model.parameters())
+scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, [2])
+
+# model training
+runner = dl.SupervisedRunner()
+runner.train(
+    model=model,
+    criterion=criterion,
+    optimizer=optimizer,
+    scheduler=scheduler,
+    loaders=loaders,
+    logdir="./logdir",
+    num_epochs=3,
+    callbacks=[dl.MultiLabelAccuracyCallback(threshold=0.5)]
+)
+```
+</p>
+</details>
+
+
+<details>
+<summary>CV - MNIST classification</summary>
 <p>
 
 ```python
@@ -212,7 +305,8 @@ import torch
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from catalyst import dl
-from catalyst.contrib.data.dataset import MNIST, ToTensor
+from catalyst.contrib.data.transforms import ToTensor
+from catalyst.contrib.datasets import MNIST
 from catalyst.utils import metrics
 
 model = torch.nn.Linear(28 * 28, 10)
@@ -231,17 +325,17 @@ class CustomRunner(dl.Runner):
 
         loss = F.cross_entropy(y_hat, y)
         accuracy01, accuracy03, accuracy05 = metrics.accuracy(y_hat, y, topk=(1, 3, 5))
-        self.state.batch_metrics = {
+        self.batch_metrics = {
             "loss": loss,
             "accuracy01": accuracy01,
             "accuracy03": accuracy03,
             "accuracy05": accuracy05,
         }
         
-        if self.state.is_train_loader:
+        if self.is_train_loader:
             loss.backward()
-            self.state.optimizer.step()
-            self.state.optimizer.zero_grad()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
 runner = CustomRunner()
 runner.train(
@@ -265,7 +359,8 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from catalyst import dl
-from catalyst.contrib.data.dataset import MNIST, ToTensor
+from catalyst.contrib.data.transforms import ToTensor
+from catalyst.contrib.datasets import MNIST
 from catalyst.utils import metrics
 
 class ClassifyAE(nn.Module):
@@ -301,7 +396,7 @@ class CustomRunner(dl.Runner):
         loss_ae = F.mse_loss(x_, x)
         loss = loss_clf + loss_ae
         accuracy01, accuracy03, accuracy05 = metrics.accuracy(y_hat, y, topk=(1, 3, 5))
-        self.state.batch_metrics = {
+        self.batch_metrics = {
             "loss_clf": loss_clf,
             "loss_ae": loss_ae,
             "loss": loss,
@@ -310,10 +405,10 @@ class CustomRunner(dl.Runner):
             "accuracy05": accuracy05,
         }
 
-        if self.state.is_train_loader:
+        if self.is_train_loader:
             loss.backward()
-            self.state.optimizer.step()
-            self.state.optimizer.zero_grad()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
 runner = CustomRunner()
 runner.train(
@@ -338,7 +433,8 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from catalyst import dl
-from catalyst.contrib.data.dataset import MNIST, ToTensor
+from catalyst.contrib.data.transforms import ToTensor
+from catalyst.contrib.datasets import MNIST
 from catalyst.utils import metrics
 
 LOG_SCALE_MAX = 2
@@ -398,7 +494,7 @@ class CustomRunner(dl.Runner):
         loss_logprob = torch.mean(z_logprob) * 0.01
         loss = loss_clf + loss_ae + loss_kld + loss_logprob
         accuracy01, accuracy03, accuracy05 = metrics.accuracy(y_hat, y, topk=(1, 3, 5))
-        self.state.batch_metrics = {
+        self.batch_metrics = {
             "loss_clf": loss_clf,
             "loss_ae": loss_ae,
             "loss_kld": loss_kld,
@@ -409,10 +505,10 @@ class CustomRunner(dl.Runner):
             "accuracy05": accuracy05,
         }
 
-        if self.state.is_train_loader:
+        if self.is_train_loader:
             loss.backward()
-            self.state.optimizer.step()
-            self.state.optimizer.zero_grad()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
 runner = CustomRunner()
 runner.train(
@@ -436,7 +532,8 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from catalyst import dl
-from catalyst.contrib.data.dataset import MNIST, ToTensor
+from catalyst.contrib.data.transforms import ToTensor
+from catalyst.contrib.datasets import MNIST
 from catalyst.utils import metrics
 
 class ClassifyUnet(nn.Module):
@@ -474,7 +571,7 @@ class CustomRunner(dl.Runner):
         loss_iou = 1 - iou
         loss = loss_clf + loss_iou
         accuracy01, accuracy03, accuracy05 = metrics.accuracy(y_hat, y, topk=(1, 3, 5))
-        self.state.batch_metrics = {
+        self.batch_metrics = {
             "loss_clf": loss_clf,
             "loss_iou": loss_iou,
             "loss": loss,
@@ -484,10 +581,10 @@ class CustomRunner(dl.Runner):
             "accuracy05": accuracy05,
         }
         
-        if self.state.is_train_loader:
+        if self.is_train_loader:
             loss.backward()
-            self.state.optimizer.step()
-            self.state.optimizer.zero_grad()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
 runner = CustomRunner()
 runner.train(
@@ -511,7 +608,8 @@ from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
 from catalyst import dl
-from catalyst.contrib.data.dataset import MNIST, ToTensor
+from catalyst.contrib.data.transforms import ToTensor
+from catalyst.contrib.datasets import MNIST
 from catalyst.contrib.nn.modules import Flatten, GlobalMaxPool2d, Lambda
 
 latent_dim = 128
@@ -584,7 +682,7 @@ class CustomRunner(dl.Runner):
         batch_metrics["loss_generator"] = \
           F.binary_cross_entropy_with_logits(predictions, misleading_labels)
         
-        self.state.batch_metrics.update(**batch_metrics)
+        self.batch_metrics.update(**batch_metrics)
 
 runner = CustomRunner()
 runner.train(
@@ -668,7 +766,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from catalyst import dl, utils
-from catalyst.contrib.data.dataset import MNIST, ToTensor
+from catalyst.contrib.data.transforms import ToTensor
+from catalyst.contrib.datasets import MNIST
 from catalyst.utils import metrics
 
 class ClassifyAE(nn.Module):
@@ -696,7 +795,7 @@ class CustomRunner(dl.Runner):
         loss_ae = F.mse_loss(x_, x)
         loss = loss_clf + loss_ae
         accuracy01, accuracy03, accuracy05 = metrics.accuracy(y_hat, y, topk=(1, 3, 5))
-        self.state.batch_metrics = {
+        self.batch_metrics = {
             "loss_clf": loss_clf,
             "loss_ae": loss_ae,
             "loss": loss,
@@ -705,10 +804,10 @@ class CustomRunner(dl.Runner):
             "accuracy05": accuracy05,
         }
 
-        if self.state.is_train_loader:
+        if self.is_train_loader:
             loss.backward()
-            self.state.optimizer.step()
-            self.state.optimizer.zero_grad()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
 def datasets_fn():
     dataset = MNIST(os.getcwd(), train=False, download=True, transform=ToTensor())
@@ -745,32 +844,34 @@ utils.distributed_cmd_run(train)
 - Callbacks – reusable train/inference pipeline parts with easy customization.
 - Training stages support.
 - Deep Learning best practices - SWA, AdamW, Ranger optimizer, OneCycle, and more.
-- Developments best practices - fp16 support, distributed training, slurm.
+- Developments best practices - fp16 support, distributed training, slurm support.
 
 
 ### Structure
-- **contrib** - additional modules contributed by Catalyst users.
 - **core** - framework core with main abstractions - 
-    Experiment, Runner, Callback and State.
+    Experiment, Runner and Callback.
 - **data** - useful tools and scripts for data processing.
 - **dl** – runner for training and inference,
    all of the classic ML and CV/NLP/RecSys metrics
    and a variety of callbacks for training, validation
    and inference of neural networks.
-- **utils** - typical utils for Deep Learning research.
+- **tools** - extra tools for Deep Learning research, class-based helpers.   
+- **utils** - typical utils for Deep Learning research, function-based helpers.
+- **contrib** - additional modules contributed by Catalyst users.
 
 
 ### Tests
-All the Catalyst code is [tested rigorously with every new PR](./tests).
+All Catalyst code, features and pipelines [are fully tested](./tests) 
+with our own [catalyst-codestyle](https://github.com/catalyst-team/codestyle).
 
 In fact, we train a number of different models for various of tasks - 
-image classification, image segmentation, text classification, GAN training.
+image classification, image segmentation, text classification, GANs training 
+and much more.
 During the tests, we compare their convergence metrics in order to verify 
 the correctness of the training procedure and its reproducibility.
 
-Overall, Catalyst guarantees fully tested, correct and reproducible 
-best practices for the automated parts.
-
+As a result, Catalyst provides fully tested and reproducible 
+best practices for your deep learning research.
 
 
 ## Catalyst
@@ -782,49 +883,62 @@ best practices for the automated parts.
 - Advanced [segmentation tutorial](./examples/notebooks/segmentation-tutorial.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/catalyst-team/catalyst/blob/master/examples/notebooks/segmentation-tutorial.ipynb)
 - Comprehensive [classification pipeline](https://github.com/catalyst-team/classification)
 - Binary and semantic [segmentation pipeline](https://github.com/catalyst-team/segmentation)
-- [Beyond fashion: Deep Learning with Catalyst (Config API)](https://evilmartians.com/chronicles/beyond-fashion-deep-learning-with-catalyst)
-- [Tutorial from Notebook API to Config API (RU)](https://github.com/Bekovmi/Segmentation_tutorial)
 
-API documentation and an overview of the library can be found here
-[![Docs](https://img.shields.io/badge/dynamic/json.svg?label=docs&url=https%3A%2F%2Fpypi.org%2Fpypi%2Fcatalyst%2Fjson&query=%24.info.version&colorB=brightgreen&prefix=v)](https://catalyst-team.github.io/catalyst/index.html). <br/>
-In the **[examples folder](examples)**
-of the repository, you can find advanced tutorials and Catalyst best practices.
+
+### Docs
+
+- [master](https://catalyst-team.github.io/catalyst/)
+- [20.07](https://catalyst-team.github.io/catalyst/v20.07/index.html)
+- [20.06](https://catalyst-team.github.io/catalyst/v20.06/index.html)
+- [20.05](https://catalyst-team.github.io/catalyst/v20.05/index.html), [20.05.1](https://catalyst-team.github.io/catalyst/v20.05.1/index.html)
+- [20.04](https://catalyst-team.github.io/catalyst/v20.04/index.html), [20.04.1](https://catalyst-team.github.io/catalyst/v20.04.1/index.html), [20.04.2](https://catalyst-team.github.io/catalyst/v20.04.2/index.html)
 
 
 ### Guides
 
+- [Catalyst 101 — Accelerated PyTorch](https://medium.com/pytorch/catalyst-101-accelerated-pytorch-bd766a556d92?source=friends_link&sk=d3dd9b2b23500eca046361187b4619ff)
+- [BERT Distillation with Catalyst](https://medium.com/pytorch/bert-distillation-with-catalyst-c6f30c985854?source=friends_link&sk=1a28469ac8c0e6e6ad35bd26dfd95dd9)
+- [Addressing the Cocktail Party Problem using PyTorch](https://medium.com/pytorch/addressing-the-cocktail-party-problem-using-pytorch-305fb74560ea)
 - [Distributed training best practices](https://catalyst-team.github.io/catalyst/info/distributed.html)
+- [Beyond fashion: Deep Learning with Catalyst (Config API)](https://evilmartians.com/chronicles/beyond-fashion-deep-learning-with-catalyst)
+- [Tutorial from Notebook API to Config API (RU)](https://github.com/Bekovmi/Segmentation_tutorial)
 
 
 ### Projects
-- [Kaggle Quick, Draw! Doodle Recognition Challenge](https://github.com/ngxbac/Kaggle-QuickDraw) - 11th place solution
-- [Catalyst.RL - NeurIPS 2018: AI for Prosthetics Challenge](https://github.com/Scitator/neurips-18-prosthetics-challenge) – 3rd place solution
+
+#### Examples, notebooks and starter kits
 - [CamVid Segmentation Example](https://github.com/BloodAxe/Catalyst-CamVid-Segmentation-Example) - Example of semantic segmentation for CamVid dataset
 - [Notebook API tutorial for segmentation in Understanding Clouds from Satellite Images Competition](https://www.kaggle.com/artgor/segmentation-in-pytorch-using-convenient-tools/)
-- [Kaggle Google Landmark 2019](https://github.com/ngxbac/Kaggle-Google-Landmark-2019) - 30th place solution
-- [Hierarchical attention for sentiment classification with visualization](https://github.com/neuromation/ml-recipe-hier-attention)
-- [Pediatric bone age assessment](https://github.com/neuromation/ml-recipe-bone-age)
-- [iMet Collection 2019 - FGVC6](https://github.com/ngxbac/Kaggle-iMet) - 24th place solution
-- [ID R&D Anti-spoofing Challenge](https://github.com/bagxi/idrnd-anti-spoofing-challenge-solution) - 14th place solution
-- [Implementation of paper "Tell Me Where to Look: Guided Attention Inference Network"](https://github.com/ngxbac/GAIN)
 - [Catalyst.RL - NeurIPS 2019: Learn to Move - Walk Around](https://github.com/Scitator/learning-to-move-starter-kit) – starter kit
 - [Catalyst.RL - NeurIPS 2019: Animal-AI Olympics](https://github.com/Scitator/animal-olympics-starter-kit) - starter kit
+- [Inria Segmentation Example](https://github.com/BloodAxe/Catalyst-Inria-Segmentation-Example) - An example of training segmentation model for Inria Sattelite Segmentation Challenge
+- [iglovikov_segmentation](https://github.com/ternaus/iglovikov_segmentation) - Semantic segmentation pipeline using Catalyst
+
+#### Competitions
+- [Kaggle Quick, Draw! Doodle Recognition Challenge](https://github.com/ngxbac/Kaggle-QuickDraw) - 11th place solution
+- [Catalyst.RL - NeurIPS 2018: AI for Prosthetics Challenge](https://github.com/Scitator/neurips-18-prosthetics-challenge) – 3rd place solution
+- [Kaggle Google Landmark 2019](https://github.com/ngxbac/Kaggle-Google-Landmark-2019) - 30th place solution
+- [iMet Collection 2019 - FGVC6](https://github.com/ngxbac/Kaggle-iMet) - 24th place solution
+- [ID R&D Anti-spoofing Challenge](https://github.com/bagxi/idrnd-anti-spoofing-challenge-solution) - 14th place solution
 - [NeurIPS 2019: Recursion Cellular Image Classification](https://github.com/ngxbac/Kaggle-Recursion-Cellular) - 4th place solution
 - [MICCAI 2019: Automatic Structure Segmentation for Radiotherapy Planning Challenge 2019](https://github.com/ngxbac/StructSeg2019) 
   * 3rd place solution for `Task 3: Organ-at-risk segmentation from chest CT scans`
   * and 4th place solution for `Task 4: Gross Target Volume segmentation of lung cancer`
 - [Kaggle Seversteal steel detection](https://github.com/bamps53/kaggle-severstal) - 5th place solution
-- [Implementation of paper "Filter Response Normalization Layer: Eliminating Batch Dependence in the Training of Deep Neural Networks"](https://github.com/yukkyo/PyTorch-FilterResponseNormalizationLayer)
 - [RSNA Intracranial Hemorrhage Detection](https://github.com/ngxbac/Kaggle-RSNA) - 5th place solution
-- [Implementation of paper "Utterance-level Aggregation For Speaker Recognition In The Wild"](https://github.com/ptJexio/Speaker-Recognition)
 - [APTOS 2019 Blindness Detection](https://github.com/BloodAxe/Kaggle-2019-Blindness-Detection) – 7th place solution
 - [Catalyst.RL - NeurIPS 2019: Learn to Move - Walk Around](https://github.com/Scitator/run-skeleton-run-in-3d) – 2nd place solution
 - [xView2 Damage Assessment Challenge](https://github.com/BloodAxe/xView2-Solution) - 3rd place solution
-- [Inria Segmentation Example](https://github.com/BloodAxe/Catalyst-Inria-Segmentation-Example) - An example of training segmentation model for Inria Sattelite Segmentation Challenge
-- [iglovikov_segmentation](https://github.com/ternaus/iglovikov_segmentation) - Semantic segmentation pipeline using Catalyst
 
+#### Paper implementations
+- [Hierarchical attention for sentiment classification with visualization](https://github.com/neuromation/ml-recipe-hier-attention)
+- [Pediatric bone age assessment](https://github.com/neuromation/ml-recipe-bone-age)
+- [Implementation of paper "Tell Me Where to Look: Guided Attention Inference Network"](https://github.com/ngxbac/GAIN)
+- [Implementation of paper "Filter Response Normalization Layer: Eliminating Batch Dependence in the Training of Deep Neural Networks"](https://github.com/yukkyo/PyTorch-FilterResponseNormalizationLayer)
+- [Implementation of paper "Utterance-level Aggregation For Speaker Recognition In The Wild"](https://github.com/ptJexio/Speaker-Recognition)
+- [Implementation of paper "Looking to Listen at the Cocktail Party: A Speaker-Independent Audio-Visual Model for Speech Separation"](https://github.com/vitrioil/Speech-Separation)
 
-### Tools and pipelines
+#### Tools and pipelines
 - [Catalyst.RL](https://github.com/Scitator/catalyst-rl-framework) – A Distributed Framework for Reproducible RL Research by [Scitator](https://github.com/Scitator)
 - [Catalyst.Classification](https://github.com/catalyst-team/classification) - Comprehensive classification pipeline with Pseudo-Labeling by [Bagxi](https://github.com/bagxi) and [Pdanilov](https://github.com/pdanilov)
 - [Catalyst.Segmentation](https://github.com/catalyst-team/segmentation) - Segmentation pipelines - binary, semantic and instance, by [Bagxi](https://github.com/bagxi)
@@ -834,7 +948,7 @@ of the repository, you can find advanced tutorials and Catalyst best practices.
 - [MLComp](https://github.com/catalyst-team/mlcomp) – distributed DAG framework for machine learning with UI by [Lightforever](https://github.com/lightforever)
 - [Pytorch toolbelt](https://github.com/BloodAxe/pytorch-toolbelt) - PyTorch extensions for fast R&D prototyping and Kaggle farming by [BloodAxe](https://github.com/BloodAxe)
 - [Helper functions](https://github.com/ternaus/iglovikov_helper_functions) - An unstructured set of helper functions by [Ternaus](https://github.com/ternaus)
-
+- [BERT Distillation with Catalyst](https://github.com/elephantmipt/bert-distillation) by [elephantmipt](https://github.com/elephantmipt)
 
 ### Talks and videos
 - [Catalyst-team YouTube channel](https://www.youtube.com/channel/UC39Z1Cwr9n8DVpuXcsyi9FQ)
@@ -877,25 +991,25 @@ We appreciate any type of feedback. Thank you!
 ### Acknowledgments
 
 Since the beginning of the development of the Сatalyst, 
-a lot of people have influenced it in a lot of different ways. <br/>
-HUGE THANK YOU to:
+a lot of people have influenced it in a lot of different ways.
 
-- [Eugene Kachan](https://www.linkedin.com/in/yauheni-kachan/) ([bagxi](https://github.com/bagxi)) for many Config API improvements and CV pipelines
-- [Artem Zolkin](https://www.linkedin.com/in/artem-zolkin-b5155571/) ([arquestro](https://github.com/Arquestro)) for best ever documentation
-- [David Kuryakin](https://www.linkedin.com/in/dkuryakin/) ([dkuryakin](https://github.com/dkuryakin)) for ReAction design
-- [Evgeny Semyonov](https://www.linkedin.com/in/ewan-semyonov/) ([lightforever](https://github.com/lightforever)) for MLComp creation
-- [Andrey Zharkov](https://www.linkedin.com/in/andrey-zharkov-8554a1153/) ([asmekal](https://github.com/asmekal)) for Catalyst.GAN initiative
-- [Aleksey Grinchuk](https://www.facebook.com/grinchuk.alexey) ([alexgrinch](https://github.com/AlexGrinch)) and [Valentin Khrulkov](https://www.linkedin.com/in/vkhrulkov/) ([khrulkovv](https://github.com/KhrulkovV)) for many RL algorithms implemented together
-- [Alex Gaziev](https://www.linkedin.com/in/alexgaziev/) ([gazay](https://github.com/gazay)) for a bunch of Config API improvements
-- [Eugene Khvedchenya](https://www.linkedin.com/in/cvtalks/) ([bloodaxe](https://github.com/BloodAxe)) for Pytorch-toolbelt library
-- [Yury Kashnitsky](https://www.linkedin.com/in/kashnitskiy/) ([yorko](https://github.com/Yorko)) for Catalyst.NLP movement
-- [Vladimir Iglovikov](https://www.linkedin.com/in/iglovikov/) ([ternaus](https://github.com/ternaus)) for countless pieces of useful advices
-- [Nguyen Xuan Bac](https://www.linkedin.com/in/bac-nguyen-xuan-70340b66/) ([ngxbac](https://github.com/ngxbac)) and [Andrey Lukyanenko](https://www.linkedin.com/in/andlukyane/) ([erlemar](https://github.com/erlemar)) for many Kaggle Catalyst-based solutions
-- [Roman Tezikov](https://www.linkedin.com/in/roman-tezikov/) ([tezromach](https://github.com/TezRomacH)) for great Catalyst tutorials
-- [Vsevolod Poletaev](https://www.linkedin.com/in/vsevolod-poletaev-468071165/) ([hexfaker](https://github.com/hexfaker)) for Experiment idea and PoC
-- [Aleksandr Belskikh](https://www.linkedin.com/in/belskikh/) ([belskikh](https://github.com/belskikh)) for Callbacks-based system inspiration
-- [Artur Kuzin](https://www.linkedin.com/in/n01z3/) ([n01z3](https://github.com/n01z3)) for multi-stage pipelines proposal
-- and [Ivan Stepanenko](https://www.facebook.com/istepanenko) for awesome Catalyst.Ecosystem design
+#### Catalyst.Team
+- [Eugene Kachan](https://www.linkedin.com/in/yauheni-kachan/) ([bagxi](https://github.com/bagxi)) - Config API improvements and CV pipelines
+- [Artem Zolkin](https://www.linkedin.com/in/artem-zolkin-b5155571/) ([arquestro](https://github.com/Arquestro)) - documentation grandmaster
+- [David Kuryakin](https://www.linkedin.com/in/dkuryakin/) ([dkuryakin](https://github.com/dkuryakin)) - Reaction design
+
+#### Catalyst.Contributors
+- [Evgeny Semyonov](https://www.linkedin.com/in/ewan-semyonov/) ([lightforever](https://github.com/lightforever)) - MLComp creator
+- [Andrey Zharkov](https://www.linkedin.com/in/andrey-zharkov-8554a1153/) ([asmekal](https://github.com/asmekal)) - Catalyst.GAN initiative
+- [Aleksey Grinchuk](https://www.facebook.com/grinchuk.alexey) ([alexgrinch](https://github.com/AlexGrinch)) and [Valentin Khrulkov](https://www.linkedin.com/in/vkhrulkov/) ([khrulkovv](https://github.com/KhrulkovV)) - many RL collaborations
+- [Alex Gaziev](https://www.linkedin.com/in/alexgaziev/) ([gazay](https://github.com/gazay)) - a bunch of Config API improvements and our Config API wizard support
+- [Eugene Khvedchenya](https://www.linkedin.com/in/cvtalks/) ([bloodaxe](https://github.com/BloodAxe)) - Pytorch-toolbelt library maintainer
+- [Yury Kashnitsky](https://www.linkedin.com/in/kashnitskiy/) ([yorko](https://github.com/Yorko)) - Catalyst.NLP initiative
+
+#### Catalyst.Friends
+- [Vladimir Iglovikov](https://www.linkedin.com/in/iglovikov/) ([ternaus](https://github.com/ternaus)) - kaggle grandmaster advices
+- [Nguyen Xuan Bac](https://www.linkedin.com/in/bac-nguyen-xuan-70340b66/) ([ngxbac](https://github.com/ngxbac)) - kaggle competitions support
+- [Ivan Stepanenko](https://www.facebook.com/istepanenko) - awesome Catalyst.Ecosystem design
 
 
 ### Trusted by

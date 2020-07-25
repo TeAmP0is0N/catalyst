@@ -3,6 +3,13 @@ Data
 
 Data subpackage has data preprocessers and dataloader abstractions.
 
+.. toctree::
+   :titlesonly:
+
+.. contents::
+   :local:
+
+
 .. automodule:: catalyst.data
     :members:
     :undoc-members:
@@ -19,6 +26,7 @@ For example:
 
 .. automodule:: catalyst.data.__main__
     :members:
+    :exclude-members: build_parser, main
 
 
 Augmentor
@@ -47,6 +55,24 @@ Dataset
     :special-members: __getitem__, __len__
 
 
+In-batch Samplers
+--------------------
+
+.. automodule:: catalyst.data.sampler_inbatch
+    :members:
+    :undoc-members:
+    :special-members: __iter__, __len__
+
+
+Loader
+--------------------
+
+.. automodule:: catalyst.data.loader
+    :show-inheritance:
+    :members:
+    :special-members:
+
+
 Reader
 --------------------
 
@@ -66,8 +92,3 @@ Sampler
     :members:
     :undoc-members:
     :special-members: __iter__, __len__
-
-
-
-
-

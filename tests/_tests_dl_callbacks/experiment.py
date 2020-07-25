@@ -1,8 +1,10 @@
+# flake8: noqa
 from collections import OrderedDict
 
 from torch.utils.data import Subset
 
-from catalyst.contrib.data.dataset import Compose, MNIST, Normalize, ToTensor
+from catalyst.contrib.data.transforms import Compose, Normalize, ToTensor
+from catalyst.contrib.datasets import MNIST
 from catalyst.dl import ConfigExperiment
 
 

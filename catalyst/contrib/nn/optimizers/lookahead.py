@@ -1,3 +1,5 @@
+# flake8: noqa
+# @TODO: code formatting issue for 20.07 release
 from typing import Callable, Dict, Optional
 from collections import defaultdict
 
@@ -11,8 +13,8 @@ class Lookahead(Optimizer):
     It has been proposed in `Lookahead Optimizer: k steps forward,
     1 step back`_.
 
-    Main origins of inspiration:
-        https://github.com/alphadl/lookahead.pytorch (MIT License)
+    Adapted from:
+    https://github.com/alphadl/lookahead.pytorch (MIT License)
 
     .. _`Lookahead Optimizer\: k steps forward, 1 step back`:
         https://arxiv.org/abs/1907.08610
@@ -52,6 +54,9 @@ class Lookahead(Optimizer):
         Args:
             closure (callable, optional): A closure that reevaluates
                 the model and returns the loss.
+
+        Returns:
+            computed loss
         """
         loss = self.optimizer.step(closure)
         for group in self.param_groups:
@@ -101,7 +106,7 @@ class Lookahead(Optimizer):
         cls, params: Dict, base_optimizer_params: Dict = None, **kwargs,
     ) -> "Lookahead":
         """@TODO: Docs. Contribution is welcome."""
-        from catalyst.dl.registry import OPTIMIZERS
+        from catalyst.registry import OPTIMIZERS
 
         base_optimizer = OPTIMIZERS.get_from_params(
             params=params, **base_optimizer_params

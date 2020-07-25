@@ -7,7 +7,8 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
 from catalyst import dl
-from catalyst.contrib.data.dataset import MNIST, ToTensor
+from catalyst.contrib.data.transforms import ToTensor
+from catalyst.contrib.datasets import MNIST
 from catalyst.contrib.nn.modules import Flatten, GlobalMaxPool2d, Lambda
 
 LATENT_DIM = 128
@@ -58,7 +59,7 @@ class CustomRunner(dl.Runner):
             predictions, misleading_labels
         )
 
-        self.state.batch_metrics.update(**batch_metrics)
+        self.batch_metrics.update(**batch_metrics)
 
 
 def main():
@@ -95,9 +96,7 @@ def main():
     }
     loaders = {
         "train": DataLoader(
-            MNIST(
-                os.getcwd(), train=True, download=True, transform=ToTensor(),
-            ),
+            MNIST("./data", train=True, download=True, transform=ToTensor(),),
             batch_size=32,
         ),
     }

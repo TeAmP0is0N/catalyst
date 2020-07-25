@@ -1,10 +1,11 @@
+# flake8: noqa
 from typing import Dict
 from collections import OrderedDict
 from pathlib import Path
 
 import pandas as pd
 
-from catalyst.contrib.data.nlp.classification import TextClassificationDataset
+from catalyst.contrib.data.nlp.dataset import TextClassificationDataset
 from catalyst.dl import ConfigExperiment
 
 

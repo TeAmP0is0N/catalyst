@@ -1,8 +1,10 @@
 from typing import Any, Callable, Dict, List, Union
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 import numpy as np
 
+import torch
 from torch.utils.data import Dataset, Sampler
 
 from catalyst.utils import merge_dicts
@@ -70,8 +72,8 @@ class MergeDataset(Dataset):
             dict_transform (callable): transforms common for all datasets.
                 (for example normalize image, add blur, crop/resize/etc)
         """
-        self.len = len(datasets[0])
-        assert all(len(x) == self.len for x in datasets)
+        self.length = len(datasets[0])
+        assert all(len(x) == self.length for x in datasets)
         self.datasets = datasets
         self.dict_transform = dict_transform
 
@@ -97,7 +99,7 @@ class MergeDataset(Dataset):
         Returns:
             int: length of the dataset
         """
-        return self.len
+        return self.length
 
 
 class NumpyDataset(Dataset):
@@ -110,12 +112,14 @@ class NumpyDataset(Dataset):
         dict_transform: Callable = None,
     ):
         """
+        General purpose dataset class to use with `numpy_data`.
+
         Args:
             numpy_data (np.ndarray): numpy data
-                (for example path to embeddings, features, etc.)
+              (for example path to embeddings, features, etc.)
             numpy_key (str): key to use for output dictionary
             dict_transform (callable): transforms to use on dict.
-                (for example normalize vector, etc)
+              (for example normalize vector, etc)
         """
         super().__init__()
         self.data = numpy_data
@@ -222,6 +226,54 @@ class DatasetFromSampler(Dataset):
             int: length of the dataset
         """
         return len(self.sampler)
+
+
+class QueryGalleryDataset(Dataset, ABC):
+    """
+    QueryGallleryDataset for CMCScoreCallback
+    """
+
+    @abstractmethod
+    def __getitem__(self, item) -> Dict[str, torch.Tensor]:
+        """
+        Dataset for query/gallery split should
+        return dict with `feature`, `targets` and
+        `is_query` key. Value by key `is_query` should
+        be boolean and indicate whether current object
+        is in query or in gallery.
+
+        Raises:
+            NotImplementedError: You should implement it  # noqa: DAR402
+        """
+        raise NotImplementedError()
+
+    @property
+    @abstractmethod
+    def query_size(self) -> int:
+        """
+        Query/Gallery dataset should have property
+        query size.
+
+        Raises:
+            NotImplementedError: You should implement it  # noqa: DAR402
+        Returns:
+            query size
+        """
+        raise NotImplementedError()
+
+    @property
+    @abstractmethod
+    def gallery_size(self) -> int:
+        """
+        Query/Gallery dataset should have property
+        gallery size.
+
+        Raises:
+            NotImplementedError: You should implement it  # noqa: DAR402
+        Returns:
+            gallery size
+        """
+        raise NotImplementedError()
 
 
 __all__ = [

@@ -19,9 +19,9 @@ class QHAdamW(Optimizer):
         >>> loss_fn(model(input), target).backward()
         >>> optimizer.step()
 
-    Main origins of inspiration:
-        https://github.com/iprally/qhadamw-pytorch/blob/master/qhadamw.py
-        (MIT License)
+    Adapted from:
+    https://github.com/iprally/qhadamw-pytorch/blob/master/qhadamw.py
+    (MIT License)
 
     .. _Decoupled Weight Decay Regularization:
         https://arxiv.org/abs/1711.05101
@@ -84,6 +84,12 @@ class QHAdamW(Optimizer):
         Args:
             closure (callable, optional): A closure that reevaluates
                 the model and returns the loss.
+
+        Returns:
+            computed loss
+
+        Raises:
+            RuntimeError: QHAdamW does not support sparse gradients
         """
         loss = None
         if closure is not None:
